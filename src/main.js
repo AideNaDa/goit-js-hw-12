@@ -1,104 +1,106 @@
-import {
-  searchPhotos,
-  resetPage,
-  incrementPage,
-  getCurrentPage,
-  setCurrentQuery,
-  getCurrentQuery,
-  getTotalHits,
-} from './js/pixabay-api.js';
+import { searchPhotos } from './js/pixabay-api.js';
 import { markupInterface, listImg } from './js/render-functions.js';
 import iziToast from 'izitoast';
 import 'izitoast/dist/css/iziToast.min.css';
 
 const searchButton = document.querySelector('.searchButton');
 const loadMoreButton = document.querySelector('.load-more');
+const input = document.querySelector('.input');
+let query = '';
+let page = 1;
+let totalHits = 0;
 
 const clearInput = () => {
-  const input = document.querySelector('.input');
   input.value = '';
 };
 
-function hideLoader() {
+const showLoader = () => {
+  const loader = document.querySelector('.loader');
+  loader.style.display = 'block';
+};
+
+const hideLoader = () => {
   const loader = document.querySelector('.loader');
   loader.style.display = 'none';
-}
+};
 
-searchButton.addEventListener('click', async event => {
+const handleSearch = async (event) => {
   event.preventDefault();
+  query = input.value.trim();
 
-  const input = document.querySelector('.input');
-
-  if (input.value.trim() === '') {
+  if (!query) {
     iziToast.error({
       title: 'Error',
-      message:
-        'The search field cannot be empty! Please enter the search query!',
+      message: 'The search field cannot be empty! Please enter the search query!',
     });
     return;
   }
 
-  resetPage();
-  setCurrentQuery(input.value);
-  listImg.innerHTML = ''; // Очищуємо попередні результати
-  loadMoreButton.style.display = 'none'; // Приховуємо кнопку "Load more" спочатку
+  page = 1;
+  loadMoreButton.style.display = 'none';
+  listImg.innerHTML = '';
 
   try {
-    const data = await searchPhotos(getCurrentQuery(), getCurrentPage());
+    showLoader();
+    const data = await searchPhotos(query, page);
+    hideLoader();
+    totalHits = data.totalHits;
     markupInterface(data);
 
-    if (data.hits.length) {
-      loadMoreButton.style.display = 'block'; // Показуємо кнопку "Load more", якщо є результати
+    if (totalHits > 15) {
+      loadMoreButton.style.display = 'block';
     }
 
-    if (data.totalHits === 0) {
+    if (totalHits === 0) {
       iziToast.error({
         title: 'Error',
-        message:
-          'Sorry, there was an error when receiving data. Please try again!',
+        message: 'Sorry, there are no images matching your search query. Please try again!',
       });
     }
   } catch (error) {
+    hideLoader();
     iziToast.error({
       title: 'Error',
-      message:
-        'Sorry, there was an error when receiving data. Please try again!',
+      message: 'An error occurred while fetching data. Please try again later.',
     });
   }
 
   clearInput();
-});
+};
 
-loadMoreButton.addEventListener('click', async () => {
-  incrementPage();
-
+const handleLoadMore = async () => {
+  page += 1;
+  
   try {
-    const data = await searchPhotos(getCurrentQuery(), getCurrentPage());
+    showLoader();
+    const data = await searchPhotos(query, page);
+    hideLoader();
     markupInterface(data);
 
-    const totalLoadedImages = document.querySelectorAll('.item-list').length;
+    const totalLoadedImages = listImg.childElementCount;
 
-    if (totalLoadedImages >= getTotalHits()) {
+    if (totalLoadedImages >= totalHits) {
       loadMoreButton.style.display = 'none';
-      iziToast.error({
-        title: 'Error',
+      iziToast.info({
+        title: 'End of Results',
         message: "We're sorry, but you've reached the end of search results.",
       });
     }
 
-    const { height: cardHeight } = document
-      .querySelector('.item-list')
-      .getBoundingClientRect();
 
+    const { height: cardHeight } = document.querySelector('.item-list').getBoundingClientRect();
     window.scrollBy({
       top: cardHeight * 2,
       behavior: 'smooth',
     });
   } catch (error) {
+    hideLoader();
     iziToast.error({
       title: 'Error',
-      message:
-        'Sorry, there was an error when receiving data. Please try again!',
+      message: 'An error occurred while loading more images. Please try again later.',
     });
   }
-});
+};
+
+searchButton.addEventListener('click', handleSearch);
+loadMoreButton.addEventListener('click', handleLoadMore);
