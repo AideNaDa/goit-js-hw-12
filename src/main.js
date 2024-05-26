@@ -51,6 +51,13 @@ const handleSearch = async (event) => {
       loadMoreButton.style.display = 'block';
     }
 
+    if (totalHits < 15 && totalHits !== 0) {
+      iziToast.info({
+        title: 'End of Results',
+        message: "We're sorry, but you've reached the end of search results.",
+      });
+    }
+
     if (totalHits === 0) {
       iziToast.error({
         title: 'Error',
@@ -86,7 +93,6 @@ const handleLoadMore = async () => {
         message: "We're sorry, but you've reached the end of search results.",
       });
     }
-
 
     const { height: cardHeight } = document.querySelector('.item-list').getBoundingClientRect();
     window.scrollBy({
